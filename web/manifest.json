@@ -1,6 +1,6 @@
 {
-    "name": "bill_splitter",
-    "short_name": "bill_splitter",
+    "name": "Ploy",
+    "short_name": "Ploy",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
