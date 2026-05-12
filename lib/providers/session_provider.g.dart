@@ -1,26 +1,27 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'active_session_provider.dart';
+part of 'session_provider.dart';
 
 // **************************************************************************
 // RiverpodGenerator
 // **************************************************************************
 
-String _$activeSessionHash() => r'71bfcb48871f38f28247bf631746894d651b6bce';
+String _$splitSessionNotifierHash() =>
+    r'1680de8d3f14a7164684e515660f25df377b2489';
 
-/// See also [ActiveSession].
-@ProviderFor(ActiveSession)
-final activeSessionProvider =
-    AutoDisposeNotifierProvider<ActiveSession, SplitSession>.internal(
-  ActiveSession.new,
-  name: r'activeSessionProvider',
+/// See also [SplitSessionNotifier].
+@ProviderFor(SplitSessionNotifier)
+final splitSessionNotifierProvider =
+    AutoDisposeNotifierProvider<SplitSessionNotifier, SplitSession>.internal(
+  SplitSessionNotifier.new,
+  name: r'splitSessionNotifierProvider',
   debugGetCreateSourceHash: const bool.fromEnvironment('dart.vm.product')
       ? null
-      : _$activeSessionHash,
+      : _$splitSessionNotifierHash,
   dependencies: null,
   allTransitiveDependencies: null,
 );
 
-typedef _$ActiveSession = AutoDisposeNotifier<SplitSession>;
+typedef _$SplitSessionNotifier = AutoDisposeNotifier<SplitSession>;
 // ignore_for_file: type=lint
 // ignore_for_file: subtype_of_sealed_class, invalid_use_of_internal_member, invalid_use_of_visible_for_testing_member

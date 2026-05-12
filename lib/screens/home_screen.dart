@@ -30,8 +30,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final history = ref.watch(historyProvider);
-    final profile = ref.watch(profileProvider);
+    final history = ref.watch(historyNotifierProvider);
+    final profile = ref.watch(profileNotifierProvider);
 
     // Active session = most-recent unsettled session (if any)
     final SplitSession? activeSession = history
@@ -39,8 +39,9 @@ class HomeScreen extends ConsumerWidget {
         .fold<SplitSession?>(null, (prev, s) => prev == null ? s : s);
 
     // Previous settled session
-    final SplitSession? previousSession =
-        history.where((s) => s.isSettled).firstOrNull;
+    final SplitSession? previousSession = history
+        .where((s) => s.isSettled)
+        .firstOrNull;
 
     // Deduplicated people across all sessions for "Recently Split" row
     final recentPeople = <String, String>{}; // id → emoji/name
@@ -74,7 +75,7 @@ class HomeScreen extends ConsumerWidget {
               delay: _d1,
               child: _ActiveBillCard(
                 session: activeSession,
-                onSplitNow: () => context.push('/split-now'),
+                onSplitNow: () => context.push('/split'),
               ),
             ),
 
@@ -104,9 +105,7 @@ class HomeScreen extends ConsumerWidget {
             if (recentPeople.isNotEmpty)
               FadeSlide(
                 delay: _d4,
-                child: _RecentlySplitSection(
-                  history: history,
-                ),
+                child: _RecentlySplitSection(history: history),
               ),
 
             const SizedBox(height: 32),
@@ -116,12 +115,14 @@ class HomeScreen extends ConsumerWidget {
 
       // FAB → quick new split
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/split-now'),
+        onPressed: () => context.push('/split'),
         backgroundColor: AppTheme.accentWarm,
         foregroundColor: AppTheme.primaryBg,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('New Split',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text(
+          'New Split',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
@@ -148,17 +149,17 @@ class _TopBar extends StatelessWidget {
               Text(
                 'Ploy',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                      letterSpacing: 2,
-                    ),
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 2,
+                ),
               ),
               Text(
                 'Bill Splitter',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                      height: 1.1,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textPrimary,
+                  height: 1.1,
+                ),
               ),
             ],
           ),
@@ -176,10 +177,7 @@ class _TopBar extends StatelessWidget {
               border: Border.all(color: AppTheme.accentWarm, width: 2),
             ),
             child: Center(
-              child: Text(
-                profile.emoji,
-                style: const TextStyle(fontSize: 22),
-              ),
+              child: Text(profile.emoji, style: const TextStyle(fontSize: 22)),
             ),
           ),
         ),
@@ -220,33 +218,26 @@ class _ActiveBillCard extends StatelessWidget {
                   children: [
                     Text(
                       'Total Bill',
-                      style:
-                          Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.primaryBg.withValues(alpha: 0.35),
-                                fontWeight: FontWeight.w600,
-                              ),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.primaryBg.withValues(alpha: 0.35),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      hasSession
-                          ? '₹${amount.toStringAsFixed(2)}'
-                          : '₹0.00',
-                      style: Theme.of(context)
-                          .textTheme
-                          .displaySmall
-                          ?.copyWith(
-                            color: AppTheme.primaryBg,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      hasSession ? '₹${amount.toStringAsFixed(2)}' : '₹0.00',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: AppTheme.primaryBg,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (hasSession) ...[
                       const SizedBox(height: 4),
                       Text(
                         session!.title,
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.primaryBg.withValues(alpha: 0.35),
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.primaryBg.withValues(alpha: 0.35),
+                        ),
                       ),
                     ],
                   ],
@@ -358,8 +349,10 @@ class _PreviousSplitCard extends StatelessWidget {
                 color: AppTheme.accentButton.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.history_rounded,
-                  color: AppTheme.accentWarm),
+              child: const Icon(
+                Icons.history_rounded,
+                color: AppTheme.accentWarm,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -369,8 +362,8 @@ class _PreviousSplitCard extends StatelessWidget {
                   Text(
                     'Your previous split',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -383,9 +376,9 @@ class _PreviousSplitCard extends StatelessWidget {
             Text(
               '₹${session.totalAmount.toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.accentWarm,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: AppTheme.accentWarm,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(width: 8),
             const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
@@ -423,10 +416,9 @@ class _NearbyFriendsSection extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'Nearby Friends',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const Spacer(),
             GestureDetector(
@@ -434,9 +426,9 @@ class _NearbyFriendsSection extends StatelessWidget {
               child: Text(
                 'See all',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.accentWarm,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: AppTheme.accentWarm,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -453,10 +445,9 @@ class _NearbyFriendsSection extends StatelessWidget {
             child: Center(
               child: Text(
                 'Start a split to see people here',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppTheme.textSecondary),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
               ),
             ),
           )
@@ -506,7 +497,10 @@ class _FriendChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.35),
             shape: BoxShape.circle,
-            border: Border.all(color: color.withValues(alpha: 0.35), width: 1.5),
+            border: Border.all(
+              color: color.withValues(alpha: 0.35),
+              width: 1.5,
+            ),
           ),
           child: Center(
             child: Text(
@@ -523,10 +517,9 @@ class _FriendChip extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppTheme.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
           ),
         ),
       ],
@@ -558,10 +551,9 @@ class _RecentlySplitSection extends StatelessWidget {
       children: [
         Text(
           'Recently Split With',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 14),
         SizedBox(

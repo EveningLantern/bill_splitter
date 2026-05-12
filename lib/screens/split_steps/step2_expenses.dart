@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/active_session_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/add_expense_sheet.dart';
 
@@ -10,7 +10,7 @@ class Step2Expenses extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final session = ref.watch(activeSessionProvider);
+    final session = ref.watch(splitSessionNotifierProvider);
     final total = session.totalAmount;
 
     return Stack(
@@ -29,13 +29,16 @@ class Step2Expenses extends ConsumerWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Running Total', style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Running Total',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   Text(
                     '₹${total.toStringAsFixed(2)}',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppTheme.accentWarm,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: AppTheme.accentWarm,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -48,12 +51,23 @@ class Step2Expenses extends ConsumerWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.receipt_long_outlined,
-                              size: 56, color: AppTheme.textSecondary.withValues(alpha: 0.5)),
+                          Icon(
+                            Icons.receipt_long_outlined,
+                            size: 56,
+                            color: AppTheme.textSecondary.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
                           const SizedBox(height: 12),
-                          Text('No expenses yet', style: Theme.of(context).textTheme.titleMedium),
+                          Text(
+                            'No expenses yet',
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
                           const SizedBox(height: 4),
-                          Text('Tap + to add one', style: Theme.of(context).textTheme.bodyMedium),
+                          Text(
+                            'Tap + to add one',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
                         ],
                       ),
                     )
@@ -62,8 +76,10 @@ class Step2Expenses extends ConsumerWidget {
                       itemCount: session.expenses.length,
                       itemBuilder: (context, i) {
                         final expense = session.expenses[i];
-                        final paidBy = session.participants
-                            .firstWhere((p) => p.id == expense.paidById, orElse: () => session.participants.first);
+                        final paidBy = session.participants.firstWhere(
+                          (p) => p.id == expense.paidById,
+                          orElse: () => session.participants.first,
+                        );
                         return Dismissible(
                           key: Key(expense.id),
                           direction: DismissDirection.endToStart,
@@ -73,18 +89,26 @@ class Step2Expenses extends ConsumerWidget {
                             margin: const EdgeInsets.only(bottom: 10),
                             decoration: BoxDecoration(
                               color: Colors.redAccent.withValues(alpha: 0.8),
-                              borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.cardRadius,
+                              ),
                             ),
-                            child: const Icon(Icons.delete_outline, color: Colors.white),
+                            child: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.white,
+                            ),
                           ),
-                          onDismissed: (_) =>
-                              ref.read(activeSessionProvider.notifier).removeExpense(expense.id),
+                          onDismissed: (_) => ref
+                              .read(splitSessionNotifierProvider.notifier)
+                              .removeExpense(expense.id),
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               color: AppTheme.surface,
-                              borderRadius: BorderRadius.circular(AppTheme.cardRadius),
+                              borderRadius: BorderRadius.circular(
+                                AppTheme.cardRadius,
+                              ),
                             ),
                             child: Row(
                               children: [
@@ -92,28 +116,42 @@ class Step2Expenses extends ConsumerWidget {
                                   width: 44,
                                   height: 44,
                                   decoration: BoxDecoration(
-                                    color: AppTheme.accentButton.withValues(alpha: 0.2),
+                                    color: AppTheme.accentButton.withValues(
+                                      alpha: 0.2,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Icon(Icons.receipt_outlined, color: AppTheme.accentWarm),
+                                  child: const Icon(
+                                    Icons.receipt_outlined,
+                                    color: AppTheme.accentWarm,
+                                  ),
                                 ),
                                 const SizedBox(width: 14),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(expense.title, style: Theme.of(context).textTheme.titleMedium),
+                                      Text(
+                                        expense.title,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.titleMedium,
+                                      ),
                                       const SizedBox(height: 2),
                                       Text(
                                         'Paid by ${paidBy.name}  •  split among ${expense.splitAmongIds.length}',
-                                        style: Theme.of(context).textTheme.bodySmall,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
                                       ),
                                     ],
                                   ),
                                 ),
                                 Text(
                                   '₹${expense.amount.toStringAsFixed(2)}',
-                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  style: Theme.of(context).textTheme.titleMedium
+                                      ?.copyWith(
                                         color: AppTheme.accentWarm,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -139,14 +177,17 @@ class Step2Expenses extends ConsumerWidget {
               onPressed: session.participants.isEmpty
                   ? null
                   : () => showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: AppTheme.surface,
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                      context: context,
+                      isScrollControlled: true,
+                      backgroundColor: AppTheme.surface,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(28),
                         ),
-                        builder: (_) => AddExpenseSheet(participants: session.participants),
                       ),
+                      builder: (_) =>
+                          AddExpenseSheet(participants: session.participants),
+                    ),
               icon: const Icon(Icons.add),
               label: const Text('Add Expense'),
             ),

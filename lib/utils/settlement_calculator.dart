@@ -1,113 +1,206 @@
+import '../models/split_session.dart';
+import '../models/person.dart';
 import '../models/expense.dart';
-import '../models/settlement.dart';
+import '../providers/settlement_provider.dart';
 
-/// Computes the minimal set of debt-settlement transactions for a group of
-/// expenses using the Greedy Debt-Simplification algorithm.
-///
-/// ### How it works
-/// 1. **Balance map** — For every expense:
-///    - Add the full [Expense.amount] to the payer's balance (they are owed).
-///    - Subtract each participant's equal share from their balance (they owe).
-///    Net result: positive balance = person is owed money, negative = owes money.
-///
-/// 2. **Greedy matching** — Repeatedly:
-///    - Pick the maximum creditor (highest positive balance).
-///    - Pick the maximum debtor (most negative balance, stored as positive).
-///    - The transaction amount = min(creditor balance, debtor balance).
-///    - Record Settlement(fromPersonId: debtor, toPersonId: creditor, amount).
-///    - Reduce both balances by [amount].
-///    - Remove either/both if their balance reaches zero.
-///    Continue until no non-zero balances remain.
-///
-/// This guarantees the minimum number of transactions needed to settle the
-/// group — at most N-1 for N people.
+/// Utility class for computing optimal settlements for a split session
 class SettlementCalculator {
-  /// Returns the minimal list of [Settlement] transactions.
-  ///
-  /// [personIds]  — the full set of participant IDs in the session.
-  /// [expenses]   — all expenses to settle.
-  ///
-  /// Participants not involved in any expense remain at zero and are ignored.
+  /// Legacy method for backward compatibility with tests
+  /// Takes separate lists of participants and expenses
   static List<Settlement> calculate(
-    List<String> personIds,
+    List<String> participantIds,
     List<Expense> expenses,
   ) {
-    if (personIds.isEmpty || expenses.isEmpty) return [];
+    // Convert to SplitSession format
+    final participants = participantIds
+        .map((id) => Person(id: id, name: id, avatarEmoji: null))
+        .toList();
 
-    // ── Step 1: Build net balance map ──────────────────────────────────────
-    final Map<String, double> balances = {
-      for (final id in personIds) id: 0.0,
-    };
+    final session = SplitSession(
+      title: 'Test Session',
+      participants: participants,
+      expenses: expenses,
+    );
 
-    for (final expense in expenses) {
-      // Payer is credited the full amount they fronted.
-      balances[expense.paidById] =
-          (balances[expense.paidById] ?? 0.0) + expense.amount;
+    return compute(session);
+  }
 
-      // Each participant (including payer) is debited their equal share.
-      final int splitCount = expense.splitAmongIds.length;
-      if (splitCount == 0) continue;
-      final double share = expense.amount / splitCount;
-      for (final id in expense.splitAmongIds) {
-        balances[id] = (balances[id] ?? 0.0) - share;
+  /// Computes the minimal set of settlements needed to settle all debts
+  /// Uses a greedy algorithm to minimize the number of transactions
+  static List<Settlement> compute(SplitSession session) {
+    if (session.expenses.isEmpty || session.participants.isEmpty) {
+      return [];
+    }
+
+    // Calculate net balance for each participant
+    final balances = <String, double>{};
+    final participantNames = <String, String>{};
+
+    // Initialize balances and name mapping
+    for (final participant in session.participants) {
+      balances[participant.id] = 0.0;
+      participantNames[participant.id] = participant.name;
+    }
+
+    // Process each expense
+    for (final expense in session.expenses) {
+      final splitAmount = _roundToTwoDecimals(
+        expense.amount / expense.splitAmongIds.length,
+      );
+
+      // The payer gets credited with the full amount
+      balances[expense.paidById] = _roundToTwoDecimals(
+        (balances[expense.paidById] ?? 0) + expense.amount,
+      );
+
+      // Each person in the split gets debited their share
+      for (final participantId in expense.splitAmongIds) {
+        balances[participantId] = _roundToTwoDecimals(
+          (balances[participantId] ?? 0) - splitAmount,
+        );
       }
     }
 
-    // ── Step 2: Separate into creditors / debtors ──────────────────────────
-    // Use mutable lists; we sort and pop from the front each iteration.
-    const double epsilon = 0.005; // ignore sub-half-paisa rounding dust
+    // Separate debtors and creditors
+    final debtors = <MapEntry<String, double>>[];
+    final creditors = <MapEntry<String, double>>[];
 
-    // creditors: (id, +amount they are owed)
-    final List<_Balance> creditors = [];
-    // debtors:   (id, +amount they owe, stored as positive)
-    final List<_Balance> debtors = [];
-
-    balances.forEach((id, balance) {
-      if (balance > epsilon) {
-        creditors.add(_Balance(id, balance));
-      } else if (balance < -epsilon) {
-        debtors.add(_Balance(id, -balance)); // store as positive
+    for (final entry in balances.entries) {
+      if (entry.value < -0.01) {
+        // Owes money (with small tolerance for floating point)
+        debtors.add(MapEntry(entry.key, -entry.value)); // Make positive
+      } else if (entry.value > 0.01) {
+        // Is owed money
+        creditors.add(MapEntry(entry.key, entry.value));
       }
-    });
+    }
 
-    // ── Step 3: Greedy matching ────────────────────────────────────────────
-    final List<Settlement> settlements = [];
+    // Sort by amount (largest first) for better optimization
+    debtors.sort((a, b) => b.value.compareTo(a.value));
+    creditors.sort((a, b) => b.value.compareTo(a.value));
 
-    while (creditors.isNotEmpty && debtors.isNotEmpty) {
-      // Always match the largest creditor with the largest debtor.
-      creditors.sort((a, b) => b.amount.compareTo(a.amount));
-      debtors.sort((a, b) => b.amount.compareTo(a.amount));
+    // Generate settlements using greedy algorithm
+    final settlements = <Settlement>[];
+    final debtorBalances = Map<String, double>.fromEntries(debtors);
+    final creditorBalances = Map<String, double>.fromEntries(creditors);
 
-      final _Balance creditor = creditors.first;
-      final _Balance debtor = debtors.first;
+    while (debtorBalances.isNotEmpty && creditorBalances.isNotEmpty) {
+      // Get the largest debtor and creditor
+      final debtorEntry = debtorBalances.entries.first;
+      final creditorEntry = creditorBalances.entries.first;
 
-      final double amount =
-          creditor.amount < debtor.amount ? creditor.amount : debtor.amount;
+      final debtorId = debtorEntry.key;
+      final creditorId = creditorEntry.key;
+      final debtAmount = debtorEntry.value;
+      final creditAmount = creditorEntry.value;
 
-      // Round to 2 decimal places to avoid floating-point display noise.
-      final double roundedAmount =
-          (amount * 100).round() / 100;
+      // Calculate settlement amount (minimum of debt and credit)
+      final settlementAmount = debtAmount < creditAmount
+          ? debtAmount
+          : creditAmount;
 
-      settlements.add(Settlement(
-        fromPersonId: debtor.id,
-        toPersonId: creditor.id,
-        amount: roundedAmount,
-      ));
+      // Create settlement
+      settlements.add(
+        Settlement(
+          fromPersonId: debtorId,
+          toPersonId: creditorId,
+          fromPersonName: participantNames[debtorId]!,
+          toPersonName: participantNames[creditorId]!,
+          amount: _roundToTwoDecimals(settlementAmount),
+        ),
+      );
 
-      creditor.amount -= amount;
-      debtor.amount -= amount;
+      // Update balances
+      final newDebtAmount = debtAmount - settlementAmount;
+      final newCreditAmount = creditAmount - settlementAmount;
 
-      if (creditor.amount < epsilon) creditors.removeAt(0);
-      if (debtor.amount < epsilon) debtors.removeAt(0);
+      // Remove or update debtor
+      if (newDebtAmount <= 0.01) {
+        debtorBalances.remove(debtorId);
+      } else {
+        debtorBalances[debtorId] = newDebtAmount;
+      }
+
+      // Remove or update creditor
+      if (newCreditAmount <= 0.01) {
+        creditorBalances.remove(creditorId);
+      } else {
+        creditorBalances[creditorId] = newCreditAmount;
+      }
     }
 
     return settlements;
   }
-}
 
-/// Internal mutable balance holder used during the greedy matching pass.
-class _Balance {
-  final String id;
-  double amount;
-  _Balance(this.id, this.amount);
+  /// Validates that the settlements balance out correctly
+  static bool validateSettlements(
+    SplitSession session,
+    List<Settlement> settlements,
+  ) {
+    final netAmounts = <String, double>{};
+
+    // Initialize with original balances
+    for (final participant in session.participants) {
+      netAmounts[participant.id] = 0.0;
+    }
+
+    // Calculate original balances from expenses
+    for (final expense in session.expenses) {
+      final splitAmount = expense.amount / expense.splitAmongIds.length;
+      netAmounts[expense.paidById] =
+          (netAmounts[expense.paidById] ?? 0) + expense.amount;
+
+      for (final participantId in expense.splitAmongIds) {
+        netAmounts[participantId] =
+            (netAmounts[participantId] ?? 0) - splitAmount;
+      }
+    }
+
+    // Apply settlements
+    for (final settlement in settlements) {
+      netAmounts[settlement.fromPersonId] =
+          (netAmounts[settlement.fromPersonId] ?? 0) + settlement.amount;
+      netAmounts[settlement.toPersonId] =
+          (netAmounts[settlement.toPersonId] ?? 0) - settlement.amount;
+    }
+
+    // Check if all balances are close to zero
+    return netAmounts.values.every((balance) => balance.abs() < 0.01);
+  }
+
+  /// Calculates the total amount that needs to be settled
+  static double getTotalSettlementAmount(List<Settlement> settlements) {
+    return settlements.fold(0.0, (sum, settlement) => sum + settlement.amount);
+  }
+
+  /// Groups settlements by person (who owes what)
+  static Map<String, List<Settlement>> groupSettlementsByDebtor(
+    List<Settlement> settlements,
+  ) {
+    final grouped = <String, List<Settlement>>{};
+
+    for (final settlement in settlements) {
+      grouped.putIfAbsent(settlement.fromPersonName, () => []).add(settlement);
+    }
+
+    return grouped;
+  }
+
+  /// Groups settlements by person (who receives what)
+  static Map<String, List<Settlement>> groupSettlementsByCreditor(
+    List<Settlement> settlements,
+  ) {
+    final grouped = <String, List<Settlement>>{};
+
+    for (final settlement in settlements) {
+      grouped.putIfAbsent(settlement.toPersonName, () => []).add(settlement);
+    }
+
+    return grouped;
+  }
+
+  /// Helper method to round amounts to 2 decimal places to avoid floating point precision issues
+  static double _roundToTwoDecimals(double value) {
+    return (value * 100).round() / 100;
+  }
 }

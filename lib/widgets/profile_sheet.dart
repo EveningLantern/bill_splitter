@@ -21,7 +21,7 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(profileProvider);
+    final profile = ref.read(profileNotifierProvider);
     _nameCtrl = TextEditingController(text: profile.name);
     _emojiCtrl = TextEditingController(text: profile.emoji);
   }
@@ -35,8 +35,8 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(profileProvider);
-    final history = ref.watch(historyProvider);
+    final profile = ref.watch(profileNotifierProvider);
+    final history = ref.watch(historyNotifierProvider);
 
     return Container(
       decoration: const BoxDecoration(
@@ -73,13 +73,15 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
                       Text(
                         profile.name,
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppTheme.accentWarm.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(20),
@@ -100,8 +102,7 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
             ),
           ),
 
-          const Divider(
-              color: Color(0x22FFFFFF), indent: 24, endIndent: 24),
+          const Divider(color: Color(0x22FFFFFF), indent: 24, endIndent: 24),
 
           // Edit Profile (inline)
           if (_editing) ...[
@@ -110,22 +111,23 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Edit Profile',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleMedium
-                          ?.copyWith(color: AppTheme.textSecondary)),
+                  Text(
+                    'Edit Profile',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _nameCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Your name'),
+                    decoration: const InputDecoration(labelText: 'Your name'),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _emojiCtrl,
-                    decoration:
-                        const InputDecoration(labelText: 'Avatar emoji'),
+                    decoration: const InputDecoration(
+                      labelText: 'Avatar emoji',
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -141,10 +143,10 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
                         child: FilledButton(
                           onPressed: () {
                             ref
-                                .read(profileProvider.notifier)
+                                .read(profileNotifierProvider.notifier)
                                 .updateName(_nameCtrl.text.trim());
                             ref
-                                .read(profileProvider.notifier)
+                                .read(profileNotifierProvider.notifier)
                                 .updateEmoji(_emojiCtrl.text.trim());
                             setState(() => _editing = false);
                           },
@@ -159,22 +161,30 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
             ),
           ] else ...[
             ListTile(
-              leading: const Icon(Icons.history_rounded,
-                  color: AppTheme.accentWarm),
+              leading: const Icon(
+                Icons.history_rounded,
+                color: AppTheme.accentWarm,
+              ),
               title: const Text('Split History'),
-              trailing: const Icon(Icons.chevron_right,
-                  color: AppTheme.textSecondary),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: AppTheme.textSecondary,
+              ),
               onTap: () {
                 Navigator.pop(context);
                 context.push('/history');
               },
             ),
             ListTile(
-              leading: const Icon(Icons.edit_rounded,
-                  color: AppTheme.accentWarm),
+              leading: const Icon(
+                Icons.edit_rounded,
+                color: AppTheme.accentWarm,
+              ),
               title: const Text('Edit Profile'),
-              trailing: const Icon(Icons.chevron_right,
-                  color: AppTheme.textSecondary),
+              trailing: const Icon(
+                Icons.chevron_right,
+                color: AppTheme.textSecondary,
+              ),
               onTap: () => setState(() => _editing = true),
             ),
           ],

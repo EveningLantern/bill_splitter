@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../providers/active_session_provider.dart';
+import '../providers/session_provider.dart';
 import '../theme/app_theme.dart';
 import 'split_steps/step1_setup.dart';
 import 'split_steps/step2_expenses.dart';
@@ -29,17 +29,22 @@ class _SplitNowScreenState extends ConsumerState<SplitNowScreen> {
 
   void _goTo(int step) {
     setState(() => _step = step);
-    _pageCtrl.animateToPage(step, duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+    _pageCtrl.animateToPage(
+      step,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+    );
   }
 
-
   String? _blockReason(int step) {
-    final session = ref.read(activeSessionProvider);
+    final session = ref.read(splitSessionNotifierProvider);
     if (step == 0) {
       if (session.title.isEmpty) return 'Please enter a session title.';
-      if (session.participants.length < 2) return 'Add at least 2 participants.';
+      if (session.participants.length < 2)
+        return 'Add at least 2 participants.';
     }
-    if (step == 1 && session.expenses.isEmpty) return 'Add at least one expense.';
+    if (step == 1 && session.expenses.isEmpty)
+      return 'Add at least one expense.';
     return null;
   }
 
@@ -59,14 +64,20 @@ class _SplitNowScreenState extends ConsumerState<SplitNowScreen> {
                 title: const Text('Discard session?'),
                 content: const Text('All progress will be lost.'),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Keep editing')),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('Keep editing'),
+                  ),
                   TextButton(
                     onPressed: () {
                       Navigator.pop(ctx);
-                      ref.read(activeSessionProvider.notifier).reset();
+                      ref.read(splitSessionNotifierProvider.notifier).reset();
                       context.go('/');
                     },
-                    child: const Text('Discard', style: TextStyle(color: Colors.redAccent)),
+                    child: const Text(
+                      'Discard',
+                      style: TextStyle(color: Colors.redAccent),
+                    ),
                   ),
                 ],
               ),
@@ -76,9 +87,13 @@ class _SplitNowScreenState extends ConsumerState<SplitNowScreen> {
         title: Text(_titles[_step]),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
-          child: _StepIndicator(currentStep: _step, labels: _stepLabels, onTap: (i) {
-            if (i < _step) _goTo(i);
-          }),
+          child: _StepIndicator(
+            currentStep: _step,
+            labels: _stepLabels,
+            onTap: (i) {
+              if (i < _step) _goTo(i);
+            },
+          ),
         ),
       ),
 
@@ -109,7 +124,10 @@ class _SplitNowScreenState extends ConsumerState<SplitNowScreen> {
                           final reason = _blockReason(_step);
                           if (reason != null) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(reason), behavior: SnackBarBehavior.floating),
+                              SnackBar(
+                                content: Text(reason),
+                                behavior: SnackBarBehavior.floating,
+                              ),
                             );
                             return;
                           }
@@ -133,7 +151,11 @@ class _StepIndicator extends StatelessWidget {
   final int currentStep;
   final List<String> labels;
   final ValueChanged<int> onTap;
-  const _StepIndicator({required this.currentStep, required this.labels, required this.onTap});
+  const _StepIndicator({
+    required this.currentStep,
+    required this.labels,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +170,9 @@ class _StepIndicator extends StatelessWidget {
             return Expanded(
               child: Container(
                 height: 2,
-                color: active ? AppTheme.accentWarm : AppTheme.textSecondary.withValues(alpha: 0.3),
+                color: active
+                    ? AppTheme.accentWarm
+                    : AppTheme.textSecondary.withValues(alpha: 0.3),
               ),
             );
           }
@@ -169,10 +193,14 @@ class _StepIndicator extends StatelessWidget {
                     color: active
                         ? AppTheme.accentWarm
                         : done
-                            ? Colors.greenAccent.shade700
-                            : AppTheme.surface,
+                        ? Colors.greenAccent.shade700
+                        : AppTheme.surface,
                     border: Border.all(
-                      color: active ? AppTheme.accentWarm : done ? Colors.greenAccent : AppTheme.textSecondary,
+                      color: active
+                          ? AppTheme.accentWarm
+                          : done
+                          ? Colors.greenAccent
+                          : AppTheme.textSecondary,
                       width: 2,
                     ),
                   ),
@@ -184,7 +212,9 @@ class _StepIndicator extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: active ? AppTheme.primaryBg : AppTheme.textSecondary,
+                              color: active
+                                  ? AppTheme.primaryBg
+                                  : AppTheme.textSecondary,
                             ),
                           ),
                   ),
@@ -194,7 +224,9 @@ class _StepIndicator extends StatelessWidget {
                   labels[idx],
                   style: TextStyle(
                     fontSize: 10,
-                    color: active ? AppTheme.accentWarm : AppTheme.textSecondary,
+                    color: active
+                        ? AppTheme.accentWarm
+                        : AppTheme.textSecondary,
                     fontWeight: active ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),

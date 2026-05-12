@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../providers/active_session_provider.dart';
+import '../../providers/session_provider.dart';
 import '../../theme/app_theme.dart';
 
 /// Step 1 — Session title + participant management.
@@ -18,7 +18,7 @@ class _Step1SetupState extends ConsumerState<Step1Setup> {
   @override
   void initState() {
     super.initState();
-    final session = ref.read(activeSessionProvider);
+    final session = ref.read(splitSessionNotifierProvider);
     _titleCtrl.text = session.title == 'New Trip' ? '' : session.title;
   }
 
@@ -32,20 +32,28 @@ class _Step1SetupState extends ConsumerState<Step1Setup> {
   void _addPerson() {
     final name = _nameCtrl.text.trim();
     if (name.isEmpty) return;
-    ref.read(activeSessionProvider.notifier).addPerson(name);
+    ref
+        .read(splitSessionNotifierProvider.notifier)
+        .addParticipantWithEmoji(name, null);
     _nameCtrl.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    final session = ref.watch(activeSessionProvider);
+    final session = ref.watch(splitSessionNotifierProvider);
 
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('Name this split', style: Theme.of(context).textTheme.headlineSmall),
+        Text(
+          'Name this split',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
         const SizedBox(height: 6),
-        Text('e.g. Team Dinner, Goa Trip', style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          'e.g. Team Dinner, Goa Trip',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
         const SizedBox(height: 16),
         TextField(
           controller: _titleCtrl,
@@ -56,14 +64,22 @@ class _Step1SetupState extends ConsumerState<Step1Setup> {
           ),
           onChanged: (v) {
             if (v.trim().isNotEmpty) {
-              ref.read(activeSessionProvider.notifier).setTitle(v.trim());
+              ref
+                  .read(splitSessionNotifierProvider.notifier)
+                  .setTitle(v.trim());
             }
           },
         ),
         const SizedBox(height: 32),
-        Text('Add Participants', style: Theme.of(context).textTheme.headlineSmall),
+        Text(
+          'Add Participants',
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
         const SizedBox(height: 6),
-        Text('Who\'s splitting this bill?', style: Theme.of(context).textTheme.bodyMedium),
+        Text(
+          'Who\'s splitting this bill?',
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
         const SizedBox(height: 16),
         Row(
           children: [
@@ -82,7 +98,10 @@ class _Step1SetupState extends ConsumerState<Step1Setup> {
             FilledButton(
               onPressed: _addPerson,
               style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 18,
+                ),
               ),
               child: const Icon(Icons.add),
             ),
@@ -109,7 +128,12 @@ class _Step1SetupState extends ConsumerState<Step1Setup> {
             spacing: 8,
             runSpacing: 8,
             children: session.participants.map((p) {
-              final colors = [Colors.pinkAccent, Colors.cyanAccent, Colors.deepPurpleAccent, Colors.orangeAccent];
+              final colors = [
+                Colors.pinkAccent,
+                Colors.cyanAccent,
+                Colors.deepPurpleAccent,
+                Colors.orangeAccent,
+              ];
               final color = colors[p.name.length % colors.length];
               return Chip(
                 avatar: CircleAvatar(
@@ -121,7 +145,9 @@ class _Step1SetupState extends ConsumerState<Step1Setup> {
                 ),
                 label: Text(p.name),
                 deleteIcon: const Icon(Icons.close, size: 16),
-                onDeleted: () => ref.read(activeSessionProvider.notifier).removePerson(p.id),
+                onDeleted: () => ref
+                    .read(splitSessionNotifierProvider.notifier)
+                    .removeParticipant(p.id),
               );
             }).toList(),
           ),
