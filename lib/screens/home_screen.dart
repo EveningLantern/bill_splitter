@@ -6,6 +6,7 @@ import '../models/split_session.dart';
 import '../providers/history_provider.dart';
 import '../providers/profile_provider.dart';
 import '../theme/app_theme.dart';
+import '../widgets/avatar_bubble.dart';
 import '../widgets/fade_slide.dart';
 import '../widgets/profile_sheet.dart';
 
@@ -31,7 +32,9 @@ class HomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final history = ref.watch(historyProvider);
-    final profile = ref.watch(profileProvider);
+    final profileAsync = ref.watch(profileProvider);
+    final profile = profileAsync.whenData((p) => p).valueOrNull ??
+        const UserProfile(name: 'You', emoji: '🧑');
 
     // Active session = most-recent unsettled session (if any)
     final SplitSession? activeSession = history
@@ -255,7 +258,12 @@ class _ActiveBillCard extends StatelessWidget {
 
               // Stacked avatars
               if (participants.isNotEmpty)
-                _StackedAvatars(participants: participants.take(4).toList()),
+                AvatarStack(
+                  names: participants.map((p) => p.name).toList(),
+                  emojis: participants.map((p) => p.avatarEmoji).toList(),
+                  sizeVariant: AvatarSize.small,
+                  maxVisible: 4,
+                ),
             ],
           ),
 
@@ -264,18 +272,21 @@ class _ActiveBillCard extends StatelessWidget {
           // Split Now button
           SizedBox(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: onSplitNow,
-              icon: const Icon(Icons.call_split_rounded, size: 18),
-              label: Text(hasSession ? 'Continue Split' : 'Split Now'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryBg,
-                foregroundColor: AppTheme.accentWarm,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            child: BounceTap(
+              onTap: onSplitNow,
+              child: ElevatedButton.icon(
+                onPressed: onSplitNow,
+                icon: const Icon(Icons.call_split_rounded, size: 18),
+                label: Text(hasSession ? 'Continue Split' : 'Split Now'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryBg,
+                  foregroundColor: AppTheme.accentWarm,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                textStyle: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -285,52 +296,6 @@ class _ActiveBillCard extends StatelessWidget {
   }
 }
 
-// ── Stacked Overlapping Avatars ───────────────────────────────────────────────
-
-class _StackedAvatars extends StatelessWidget {
-  final List participants;
-  const _StackedAvatars({required this.participants});
-
-  @override
-  Widget build(BuildContext context) {
-    const double size = 38;
-    const double overlap = 14;
-
-    return SizedBox(
-      height: size,
-      width: size + (participants.length - 1) * (size - overlap),
-      child: Stack(
-        children: List.generate(participants.length, (i) {
-          final p = participants[i];
-          final colors = [
-            Colors.pinkAccent,
-            Colors.cyanAccent,
-            Colors.deepPurpleAccent,
-            Colors.orangeAccent,
-          ];
-          return Positioned(
-            left: i * (size - overlap),
-            child: Container(
-              width: size,
-              height: size,
-              decoration: BoxDecoration(
-                color: colors[i % colors.length].withValues(alpha: 0.35),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppTheme.accentWarm, width: 2),
-              ),
-              child: Center(
-                child: Text(
-                  p.avatarEmoji ?? p.name[0].toUpperCase(),
-                  style: const TextStyle(fontSize: 15),
-                ),
-              ),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
 
 // ── Previous Split Card ──────────────────────────────────────────────────────
 
@@ -488,32 +453,13 @@ class _FriendChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = [
-      Colors.pinkAccent,
-      Colors.cyanAccent,
-      Colors.deepPurpleAccent,
-      Colors.orangeAccent,
-      Colors.greenAccent,
-    ];
-    final color = colors[name.length % colors.length];
-
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 54,
-          height: 54,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.35),
-            shape: BoxShape.circle,
-            border: Border.all(color: color.withValues(alpha: 0.35), width: 1.5),
-          ),
-          child: Center(
-            child: Text(
-              emoji.isNotEmpty ? emoji : name[0].toUpperCase(),
-              style: const TextStyle(fontSize: 22),
-            ),
-          ),
+        AvatarBubble(
+          name: name,
+          avatarEmoji: emoji.isNotEmpty ? emoji : null,
+          sizeVariant: AvatarSize.medium,
         ),
         const SizedBox(height: 6),
         SizedBox(

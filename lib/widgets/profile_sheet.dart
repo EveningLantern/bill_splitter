@@ -21,7 +21,8 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
   @override
   void initState() {
     super.initState();
-    final profile = ref.read(profileProvider);
+    final profileAsync = ref.read(profileProvider);
+    final profile = profileAsync.valueOrNull ?? const UserProfile(name: 'You', emoji: '🧑');
     _nameCtrl = TextEditingController(text: profile.name);
     _emojiCtrl = TextEditingController(text: profile.emoji);
   }
@@ -35,7 +36,8 @@ class _ProfileSheetState extends ConsumerState<ProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = ref.watch(profileProvider);
+    final profileAsync = ref.watch(profileProvider);
+    final profile = profileAsync.valueOrNull ?? const UserProfile(name: 'You', emoji: '🧑');
     final history = ref.watch(historyProvider);
 
     return Container(

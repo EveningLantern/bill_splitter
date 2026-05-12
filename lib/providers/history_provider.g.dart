@@ -6,9 +6,13 @@ part of 'history_provider.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$historyHash() => r'88bf690731ff36fb872bdc4d65ac676d39073ba8';
+String _$historyHash() => r'a4088d9b738eb10ea17b95f6fe23df4bd4179a17';
 
-/// See also [History].
+/// Reads/writes [SplitSession] objects from the Hive box `'sessions'`.
+/// Exposes a [List<SplitSession>] sorted newest-first.
+/// Subscribes to box changes via [Box.watch] for reactive updates.
+///
+/// Copied from [History].
 @ProviderFor(History)
 final historyProvider =
     AutoDisposeNotifierProvider<History, List<SplitSession>>.internal(
