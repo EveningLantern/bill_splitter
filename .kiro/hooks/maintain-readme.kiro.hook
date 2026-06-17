@@ -1,0 +1,17 @@
+{
+  "enabled": true,
+  "name": "Maintain README",
+  "description": "When any Dart source file or pubspec.yaml is edited, review the README and update it to reflect any new features, screens, dependencies, or version changes. Also keep the Releases version table current.",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "lib/**/*.dart",
+      "pubspec.yaml"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file in the Ploy bill splitter Flutter project was just edited. Review the current README.md and check if it needs to be updated to reflect any changes — new features, new screens, new dependencies in pubspec.yaml, or any changes to the project structure. Also check the Releases table: if a new version has been bumped in pubspec.yaml, add a row with today's date and a brief description of what changed. Only make changes to README.md if something is actually out of date. Do not change the version number in pubspec.yaml yourself — only reflect what is already there."
+  }
+}

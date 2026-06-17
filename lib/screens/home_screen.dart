@@ -7,6 +7,7 @@ import '../providers/history_provider.dart';
 import '../providers/profile_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/avatar_bubble.dart';
+import '../widgets/bill_tracker_section.dart';
 import '../widgets/fade_slide.dart';
 import '../widgets/profile_sheet.dart';
 
@@ -17,8 +18,17 @@ const _d2 = Duration(milliseconds: 230);
 const _d3 = Duration(milliseconds: 330);
 const _d4 = Duration(milliseconds: 430);
 
-class HomeScreen extends ConsumerWidget {
+enum _BillTab { bill, splitter }
+
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  _BillTab _activeTab = _BillTab.bill;
 
   void _openProfile(BuildContext context) {
     showModalBottomSheet(
@@ -30,10 +40,11 @@ class HomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final history = ref.watch(historyProvider);
     final profileAsync = ref.watch(profileProvider);
-    final profile = profileAsync.whenData((p) => p).valueOrNull ??
+    final profile =
+        profileAsync.whenData((p) => p).valueOrNull ??
         const UserProfile(name: 'You', emoji: '🧑');
 
     // Active session = most-recent unsettled session (if any)
@@ -42,8 +53,9 @@ class HomeScreen extends ConsumerWidget {
         .fold<SplitSession?>(null, (prev, s) => prev == null ? s : s);
 
     // Previous settled session
-    final SplitSession? previousSession =
-        history.where((s) => s.isSettled).firstOrNull;
+    final SplitSession? previousSession = history
+        .where((s) => s.isSettled)
+        .firstOrNull;
 
     // Deduplicated people across all sessions for "Recently Split" row
     final recentPeople = <String, String>{}; // id → emoji/name
@@ -55,6 +67,19 @@ class HomeScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.primaryBg,
+      // FAB only shown on Splitter tab
+      floatingActionButton: _activeTab == _BillTab.splitter
+          ? FloatingActionButton.extended(
+              onPressed: () => context.push('/split-now'),
+              backgroundColor: AppTheme.accentWarm,
+              foregroundColor: AppTheme.primaryBg,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text(
+                'New Split',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            )
+          : null,
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -67,64 +92,59 @@ class HomeScreen extends ConsumerWidget {
               child: _TopBar(
                 profile: profile,
                 onAvatarTap: () => _openProfile(context),
+                activeTab: _activeTab,
+                onTabChanged: (tab) => setState(() => _activeTab = tab),
               ),
             ),
 
             const SizedBox(height: 28),
 
-            // ── ACTIVE BILL CARD ─────────────────────────────────────────────
-            FadeSlide(
-              delay: _d1,
-              child: _ActiveBillCard(
-                session: activeSession,
-                onSplitNow: () => context.push('/split-now'),
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // ── PREVIOUS SPLIT CARD ──────────────────────────────────────────
-            if (previousSession != null) ...[
+            // ── TAB CONTENT ──────────────────────────────────────────────────
+            if (_activeTab == _BillTab.bill)
+              const FadeSlide(delay: _d1, child: BillTrackerSection())
+            else ...[
+              // ── ACTIVE BILL CARD ───────────────────────────────────────────
               FadeSlide(
-                delay: _d2,
-                child: _PreviousSplitCard(
-                  session: previousSession,
-                  onTap: () => context.push('/history'),
+                delay: _d1,
+                child: _ActiveBillCard(
+                  session: activeSession,
+                  onSplitNow: () => context.push('/split-now'),
                 ),
               ),
+
               const SizedBox(height: 16),
-            ],
 
-            // ── NEARBY FRIENDS SECTION ───────────────────────────────────────
-            FadeSlide(
-              delay: _d3,
-              child: _NearbyFriendsSection(history: history),
-            ),
-
-            const SizedBox(height: 24),
-
-            // ── RECENTLY SPLIT SECTION ───────────────────────────────────────
-            if (recentPeople.isNotEmpty)
-              FadeSlide(
-                delay: _d4,
-                child: _RecentlySplitSection(
-                  history: history,
+              // ── PREVIOUS SPLIT CARD ────────────────────────────────────────
+              if (previousSession != null) ...[
+                FadeSlide(
+                  delay: _d2,
+                  child: _PreviousSplitCard(
+                    session: previousSession,
+                    onTap: () => context.push('/history'),
+                  ),
                 ),
+                const SizedBox(height: 16),
+              ],
+
+              // ── NEARBY FRIENDS SECTION ─────────────────────────────────────
+              FadeSlide(
+                delay: _d3,
+                child: _NearbyFriendsSection(history: history),
               ),
 
-            const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // ── RECENTLY SPLIT SECTION ─────────────────────────────────────
+              if (recentPeople.isNotEmpty)
+                FadeSlide(
+                  delay: _d4,
+                  child: _RecentlySplitSection(history: history),
+                ),
+
+              const SizedBox(height: 32),
+            ],
           ],
         ),
-      ),
-
-      // FAB → quick new split
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/split-now'),
-        backgroundColor: AppTheme.accentWarm,
-        foregroundColor: AppTheme.primaryBg,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Split',
-            style: TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
@@ -135,8 +155,15 @@ class HomeScreen extends ConsumerWidget {
 class _TopBar extends StatelessWidget {
   final UserProfile profile;
   final VoidCallback onAvatarTap;
+  final _BillTab activeTab;
+  final ValueChanged<_BillTab> onTabChanged;
 
-  const _TopBar({required this.profile, required this.onAvatarTap});
+  const _TopBar({
+    required this.profile,
+    required this.onAvatarTap,
+    required this.activeTab,
+    required this.onTabChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -151,18 +178,11 @@ class _TopBar extends StatelessWidget {
               Text(
                 'Ploy',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.textSecondary,
-                      letterSpacing: 2,
-                    ),
+                  color: AppTheme.textSecondary,
+                  letterSpacing: 2,
+                ),
               ),
-              Text(
-                'Bill Splitter',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.textPrimary,
-                      height: 1.1,
-                    ),
-              ),
+              _TabToggle(activeTab: activeTab, onTabChanged: onTabChanged),
             ],
           ),
         ),
@@ -179,10 +199,7 @@ class _TopBar extends StatelessWidget {
               border: Border.all(color: AppTheme.accentWarm, width: 2),
             ),
             child: Center(
-              child: Text(
-                profile.emoji,
-                style: const TextStyle(fontSize: 22),
-              ),
+              child: Text(profile.emoji, style: const TextStyle(fontSize: 22)),
             ),
           ),
         ),
@@ -223,33 +240,26 @@ class _ActiveBillCard extends StatelessWidget {
                   children: [
                     Text(
                       'Total Bill',
-                      style:
-                          Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.primaryBg.withValues(alpha: 0.35),
-                                fontWeight: FontWeight.w600,
-                              ),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.primaryBg.withValues(alpha: 0.35),
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      hasSession
-                          ? '₹${amount.toStringAsFixed(2)}'
-                          : '₹0.00',
-                      style: Theme.of(context)
-                          .textTheme
-                          .displaySmall
-                          ?.copyWith(
-                            color: AppTheme.primaryBg,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      hasSession ? '₹${amount.toStringAsFixed(2)}' : '₹0.00',
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                        color: AppTheme.primaryBg,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     if (hasSession) ...[
                       const SizedBox(height: 4),
                       Text(
                         session!.title,
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.primaryBg.withValues(alpha: 0.35),
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: AppTheme.primaryBg.withValues(alpha: 0.35),
+                        ),
                       ),
                     ],
                   ],
@@ -296,7 +306,6 @@ class _ActiveBillCard extends StatelessWidget {
   }
 }
 
-
 // ── Previous Split Card ──────────────────────────────────────────────────────
 
 class _PreviousSplitCard extends StatelessWidget {
@@ -323,8 +332,10 @@ class _PreviousSplitCard extends StatelessWidget {
                 color: AppTheme.accentButton.withValues(alpha: 0.35),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.history_rounded,
-                  color: AppTheme.accentWarm),
+              child: const Icon(
+                Icons.history_rounded,
+                color: AppTheme.accentWarm,
+              ),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -334,8 +345,8 @@ class _PreviousSplitCard extends StatelessWidget {
                   Text(
                     'Your previous split',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: AppTheme.textSecondary,
-                        ),
+                      color: AppTheme.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -348,9 +359,9 @@ class _PreviousSplitCard extends StatelessWidget {
             Text(
               '₹${session.totalAmount.toStringAsFixed(2)}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: AppTheme.accentWarm,
-                    fontWeight: FontWeight.bold,
-                  ),
+                color: AppTheme.accentWarm,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(width: 8),
             const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
@@ -388,10 +399,9 @@ class _NearbyFriendsSection extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               'Nearby Friends',
-              style: Theme.of(context)
-                  .textTheme
-                  .titleMedium
-                  ?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
             const Spacer(),
             GestureDetector(
@@ -399,9 +409,9 @@ class _NearbyFriendsSection extends StatelessWidget {
               child: Text(
                 'See all',
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: AppTheme.accentWarm,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  color: AppTheme.accentWarm,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
@@ -418,10 +428,9 @@ class _NearbyFriendsSection extends StatelessWidget {
             child: Center(
               child: Text(
                 'Start a split to see people here',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: AppTheme.textSecondary),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: AppTheme.textSecondary),
               ),
             ),
           )
@@ -469,10 +478,9 @@ class _FriendChip extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: AppTheme.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
           ),
         ),
       ],
@@ -504,10 +512,9 @@ class _RecentlySplitSection extends StatelessWidget {
       children: [
         Text(
           'Recently Split With',
-          style: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 14),
         SizedBox(
@@ -526,6 +533,76 @@ class _RecentlySplitSection extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ── Tab Toggle ───────────────────────────────────────────────────────────────
+
+class _TabToggle extends StatelessWidget {
+  final _BillTab activeTab;
+  final ValueChanged<_BillTab> onTabChanged;
+
+  const _TabToggle({required this.activeTab, required this.onTabChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TabLabel(
+          label: 'Bill',
+          isActive: activeTab == _BillTab.bill,
+          onTap: () => onTabChanged(_BillTab.bill),
+        ),
+        Text(
+          ' | ',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: AppTheme.textSecondary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        _TabLabel(
+          label: 'Splitter',
+          isActive: activeTab == _BillTab.splitter,
+          onTap: () => onTabChanged(_BillTab.splitter),
+        ),
+      ],
+    );
+  }
+}
+
+class _TabLabel extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _TabLabel({
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    // ConstrainedBox ensures minimum 44×44 tap target (accessibility).
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: isActive ? AppTheme.textPrimary : AppTheme.textSecondary,
+              height: 1.1,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
