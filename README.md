@@ -12,7 +12,7 @@
   <a href="../../releases/latest">
     <img src="https://img.shields.io/github/v/release/EveningLantern/ploy?label=latest&color=7C6AF5&style=for-the-badge" alt="Latest Release"/>
   </a>
-  <a href="../../releases/latest/download/app-release.apk">
+  <a href="https://github.com/EveningLantern/bill_splitter/releases/download/version-2.0/Ploy-version-2.0.apk">
     <img src="https://img.shields.io/badge/Download-APK-F5C98A?style=for-the-badge&logo=android&logoColor=2B2260" alt="Download APK"/>
   </a>
   <img src="https://img.shields.io/badge/Flutter-3.10.7-54C5F8?style=for-the-badge&logo=flutter" alt="Flutter"/>
