@@ -1,7 +1,7 @@
 # Ploy — Bill Splitter
 
 <p align="center">
-  <img src="assets/images/ploy_logo_light.svg" alt="Ploy Logo" height="80"/>
+  <img src="assets/images/icon/logo.png" alt="Ploy Logo" height="80"/>
 </p>
 
 <p align="center">
